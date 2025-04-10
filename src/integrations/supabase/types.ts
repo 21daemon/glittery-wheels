@@ -139,12 +139,56 @@ export type Database = {
         }
         Relationships: []
       }
+      progress_updates: {
+        Row: {
+          booking_id: string
+          car_details: string
+          created_at: string
+          customer_email: string
+          id: string
+          image_url: string
+          message: string | null
+          updated_at: string
+        }
+        Insert: {
+          booking_id: string
+          car_details: string
+          created_at?: string
+          customer_email: string
+          id?: string
+          image_url: string
+          message?: string | null
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string
+          car_details?: string
+          created_at?: string
+          customer_email?: string
+          id?: string
+          image_url?: string
+          message?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_progress_updates_booking_id"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      execute_sql_query: {
+        Args: { query_text: string; query_params?: Json }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
