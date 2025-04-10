@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,6 +14,7 @@ interface ProgressUpdate {
   message: string;
   created_at: string;
   car_details: string;
+  customer_email?: string;
 }
 
 const ProgressPhotoGallery: React.FC<{ bookingId?: string }> = ({ bookingId }) => {
@@ -29,27 +31,38 @@ const ProgressPhotoGallery: React.FC<{ bookingId?: string }> = ({ bookingId }) =
       try {
         setIsLoading(true);
         
-        let query = supabase
-          .from('progress_updates')
-          .select('*')
-          .order('created_at', { ascending: false });
+        // Use RPC to avoid TypeScript issues with table not defined in schema
+        let query = `
+          SELECT * FROM progress_updates
+          WHERE 1=1
+        `;
         
-        // If bookingId is provided, filter by it
+        const queryParams: any = {};
+        
+        // Add conditional filtering
         if (bookingId) {
-          query = query.eq('booking_id', bookingId);
-        } else {
-          // Otherwise, get all updates for the current user by their email
-          query = query.eq('customer_email', user.email);
+          query += ` AND booking_id = :bookingId`;
+          queryParams.bookingId = bookingId;
+        } else if (user.email) {
+          query += ` AND customer_email = :customerEmail`;
+          queryParams.customerEmail = user.email;
         }
         
-        const { data, error } = await query;
+        query += ` ORDER BY created_at DESC`;
+        
+        const { data, error } = await supabase.rpc('execute_sql', {
+          query_text: query,
+          query_params: queryParams
+        });
         
         if (error) throw error;
         
-        setProgressUpdates(data || []);
+        // Handle the case where data might be null
+        const updates = data || [];
+        setProgressUpdates(updates as ProgressUpdate[]);
         
-        if (data && data.length > 0) {
-          setActivePhoto(data[0]);
+        if (updates.length > 0) {
+          setActivePhoto(updates[0] as ProgressUpdate);
         }
         
       } catch (error: any) {

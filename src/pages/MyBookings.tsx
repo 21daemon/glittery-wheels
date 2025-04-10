@@ -92,6 +92,14 @@ const MyBookings: React.FC = () => {
     }
   };
 
+  const switchToProgressTab = () => {
+    // Use querySelector with optional chaining and fix the click method
+    const tabElement = document.querySelector('[data-value="progress"]') as HTMLElement;
+    if (tabElement) {
+      tabElement.click();
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -174,7 +182,7 @@ const MyBookings: React.FC = () => {
                               onClick={() => {
                                 setActiveBooking(booking.id);
                                 // Switch to progress tab
-                                document.querySelector('[data-value="progress"]')?.click();
+                                switchToProgressTab();
                               }}
                             >
                               View Progress Photos

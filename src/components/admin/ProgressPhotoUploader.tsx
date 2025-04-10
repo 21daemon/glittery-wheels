@@ -91,16 +91,20 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
         .from('progress_photos')
         .getPublicUrl(fileName);
 
-      // 3. Save the progress update in the database
-      const { error: dbError } = await supabase
-        .from('progress_updates')
-        .insert({
+      // 3. Save the progress update in the database using raw SQL since the table isn't in the types
+      const { error: dbError } = await supabase.rpc('execute_sql', {
+        query_text: `
+          INSERT INTO progress_updates (booking_id, image_url, message, customer_email, car_details)
+          VALUES (:booking_id, :image_url, :message, :customer_email, :car_details)
+        `,
+        query_params: {
           booking_id: bookingId,
           image_url: publicUrl,
           message: message,
           customer_email: customerEmail,
           car_details: carDetails
-        });
+        }
+      });
       
       if (dbError) throw dbError;
 
