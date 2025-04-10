@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -29,7 +28,6 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast({
           title: "File too large",
@@ -39,7 +37,6 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
         return;
       }
 
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         toast({
           title: "Invalid file type",
@@ -78,24 +75,19 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
     try {
       setIsUploading(true);
       
-      // First, check if the bucket exists and create it if it doesn't
-      const { data: bucketList } = await supabase.storage.listBuckets();
-      const bucketExists = bucketList?.some(bucket => bucket.name === 'progress_photos');
-      
-      if (!bucketExists) {
-        // Create the bucket if it doesn't exist
-        const { error: createBucketError } = await supabase.storage.createBucket('progress_photos', {
-          public: true, // Make the bucket public
+      const { error: bucketError } = await supabase.functions.invoke('ensure-storage-bucket', {
+        body: {
+          bucketName: 'progress_photos',
+          isPublic: true,
           fileSizeLimit: 5242880 // 5MB size limit
-        });
-        
-        if (createBucketError) {
-          console.error("Error creating bucket:", createBucketError);
-          throw new Error("Could not create storage bucket: " + createBucketError.message);
         }
+      });
+      
+      if (bucketError) {
+        console.error("Error ensuring bucket exists:", bucketError);
+        throw new Error("Storage setup failed: " + bucketError.message);
       }
       
-      // 1. Upload the image to Supabase Storage
       const fileName = `progress_${bookingId}_${Date.now()}.${selectedImage.name.split('.').pop()}`;
       const { data: fileData, error: uploadError } = await supabase.storage
         .from('progress_photos')
@@ -103,12 +95,10 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
       
       if (uploadError) throw uploadError;
       
-      // 2. Get the public URL for the uploaded image
       const { data: { publicUrl } } = supabase.storage
         .from('progress_photos')
         .getPublicUrl(fileName);
 
-      // 3. Save the progress update in the database using raw SQL since the table isn't in the types
       const { error: dbError } = await supabase.functions.invoke('execute-sql', {
         body: {
           query_text: `
@@ -127,7 +117,6 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
       
       if (dbError) throw dbError;
 
-      // 4. Send notification to the customer (email notification)
       const { error: notificationError } = await supabase.functions.invoke('notify-customer', {
         body: {
           customerEmail,
@@ -149,7 +138,6 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
         variant: "default",
       });
       
-      // Reset form
       clearImage();
       setMessage('');
 
