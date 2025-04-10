@@ -78,6 +78,23 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
     try {
       setIsUploading(true);
       
+      // First, check if the bucket exists and create it if it doesn't
+      const { data: bucketList } = await supabase.storage.listBuckets();
+      const bucketExists = bucketList?.some(bucket => bucket.name === 'progress_photos');
+      
+      if (!bucketExists) {
+        // Create the bucket if it doesn't exist
+        const { error: createBucketError } = await supabase.storage.createBucket('progress_photos', {
+          public: true, // Make the bucket public
+          fileSizeLimit: 5242880 // 5MB size limit
+        });
+        
+        if (createBucketError) {
+          console.error("Error creating bucket:", createBucketError);
+          throw new Error("Could not create storage bucket: " + createBucketError.message);
+        }
+      }
+      
       // 1. Upload the image to Supabase Storage
       const fileName = `progress_${bookingId}_${Date.now()}.${selectedImage.name.split('.').pop()}`;
       const { data: fileData, error: uploadError } = await supabase.storage
@@ -92,17 +109,19 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
         .getPublicUrl(fileName);
 
       // 3. Save the progress update in the database using raw SQL since the table isn't in the types
-      const { error: dbError } = await supabase.rpc('execute_sql', {
-        query_text: `
-          INSERT INTO progress_updates (booking_id, image_url, message, customer_email, car_details)
-          VALUES (:booking_id, :image_url, :message, :customer_email, :car_details)
-        `,
-        query_params: {
-          booking_id: bookingId,
-          image_url: publicUrl,
-          message: message,
-          customer_email: customerEmail,
-          car_details: carDetails
+      const { error: dbError } = await supabase.functions.invoke('execute-sql', {
+        body: {
+          query_text: `
+            INSERT INTO progress_updates (booking_id, image_url, message, customer_email, car_details)
+            VALUES (:booking_id, :image_url, :message, :customer_email, :car_details)
+          `,
+          query_params: {
+            booking_id: bookingId,
+            image_url: publicUrl,
+            message: message,
+            customer_email: customerEmail,
+            car_details: carDetails
+          }
         }
       });
       

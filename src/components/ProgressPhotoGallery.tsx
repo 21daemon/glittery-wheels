@@ -50,15 +50,17 @@ const ProgressPhotoGallery: React.FC<{ bookingId?: string }> = ({ bookingId }) =
         
         query += ` ORDER BY created_at DESC`;
         
-        const { data, error } = await supabase.rpc('execute_sql', {
-          query_text: query,
-          query_params: queryParams
+        const { data, error } = await supabase.functions.invoke('execute-sql', {
+          body: {
+            query_text: query,
+            query_params: queryParams
+          }
         });
         
         if (error) throw error;
         
         // Handle the case where data might be null
-        const updates = data || [];
+        const updates = data?.data || [];
         setProgressUpdates(updates as ProgressUpdate[]);
         
         if (updates.length > 0) {

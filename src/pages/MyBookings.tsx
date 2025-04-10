@@ -94,7 +94,7 @@ const MyBookings: React.FC = () => {
 
   const switchToProgressTab = () => {
     // Use querySelector with optional chaining and fix the click method
-    const tabElement = document.querySelector('[data-value="progress"]') as HTMLElement;
+    const tabElement = document.querySelector('[data-value="progress"]') as HTMLButtonElement;
     if (tabElement) {
       tabElement.click();
     }
