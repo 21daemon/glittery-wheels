@@ -11,12 +11,14 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export function AdminDashboard() {
   const [bookings, setBookings] = useState<any[]>([]);
+  const [feedback, setFeedback] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
     fetchBookings();
+    fetchFeedback();
   }, []);
 
   const fetchBookings = async () => {
@@ -52,6 +54,28 @@ export function AdminDashboard() {
     }
   };
 
+  const fetchFeedback = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('feedback')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      
+      console.log("Fetched feedback:", data);
+      setFeedback(data || []);
+      
+    } catch (error) {
+      console.error("Error fetching feedback:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load feedback data. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
@@ -64,7 +88,10 @@ export function AdminDashboard() {
         
         <div className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <DataAnalytics />
+            <DataAnalytics 
+              bookings={bookings} 
+              feedback={feedback} 
+            />
           </div>
           
           <ManageBookings 
