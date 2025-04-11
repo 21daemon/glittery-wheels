@@ -14,7 +14,7 @@ import Booking from "./pages/Booking";
 import MyBookings from "./pages/MyBookings";
 import Feedback from "./pages/Feedback";
 import Auth from "./pages/Auth";
-import AdminDashboard from "./pages/AdminDashboard";
+import { AdminDashboard } from "./pages/AdminDashboard";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import ChatWidget from "./components/chat/ChatWidget";

@@ -36,15 +36,17 @@ const MyBookings: React.FC = () => {
         if (error) throw error;
 
         console.log('Fetched bookings:', data);
-        setBookings(data || []);
+        // Ensure data is always an array even if empty
+        const bookingsArray = Array.isArray(data) ? data : [];
+        setBookings(bookingsArray);
         
         // Set the first booking as active if available and in progress
-        if (data && data.length > 0) {
-          const inProgressBooking = data.find(b => b.status === 'in_progress');
+        if (bookingsArray.length > 0) {
+          const inProgressBooking = bookingsArray.find(b => b.status === 'in_progress');
           if (inProgressBooking) {
             setActiveBooking(inProgressBooking.id);
           } else {
-            setActiveBooking(data[0].id);
+            setActiveBooking(bookingsArray[0].id);
           }
         }
         
