@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -63,7 +64,7 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
   const createOrEnsureBucket = async () => {
     try {
       console.log("Ensuring storage bucket exists...");
-      const { error } = await supabase.functions.invoke('ensure-storage-bucket', {
+      const response = await supabase.functions.invoke('ensure-storage-bucket', {
         body: {
           bucketName: 'progress_photos',
           isPublic: true,
@@ -71,12 +72,12 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
         }
       });
       
-      if (error) {
-        console.error("Error ensuring bucket exists:", error);
-        throw new Error("Storage setup failed: " + error.message);
+      if (response.error) {
+        console.error("Error ensuring bucket exists:", response.error);
+        throw new Error("Storage setup failed: " + response.error.message);
       }
       
-      console.log("Storage bucket setup successful");
+      console.log("Storage bucket setup successful", response);
       return true;
     } catch (error) {
       console.error("Storage setup error:", error);
@@ -91,6 +92,16 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
       toast({
         title: "No image selected",
         description: "Please select an image to upload",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if customer email is available
+    if (!customerEmail) {
+      toast({
+        title: "Customer email missing",
+        description: "Cannot send progress update without customer email",
         variant: "destructive",
       });
       return;
@@ -124,23 +135,17 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
       
       console.log("Public URL generated:", publicUrl);
       
-      // Store progress update in database
-      const { error: dbError } = await supabase.functions.invoke('execute-sql', {
-        body: {
-          query_text: `
-            INSERT INTO progress_updates (booking_id, image_url, message, customer_email, car_details)
-            VALUES (:booking_id, :image_url, :message, :customer_email, :car_details)
-          `,
-          query_params: {
-            booking_id: bookingId,
-            image_url: publicUrl,
-            message: message,
-            customer_email: customerEmail,
-            car_details: carDetails
-          }
-        }
-      });
-      
+      // Store progress update in database using direct insert instead of function
+      const { error: dbError } = await supabase
+        .from('progress_updates')
+        .insert({
+          booking_id: bookingId,
+          image_url: publicUrl,
+          message: message,
+          customer_email: customerEmail,
+          car_details: carDetails
+        });
+        
       if (dbError) {
         console.error("Database error:", dbError);
         throw dbError;

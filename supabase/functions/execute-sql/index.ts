@@ -9,6 +9,17 @@ interface RequestBody {
 }
 
 serve(async (req) => {
+  // Set CORS headers
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+  
   try {
     // Create a Supabase client with the project URL and service role key
     const supabaseClient = createClient(
@@ -18,14 +29,28 @@ serve(async (req) => {
     );
 
     // Extract the request body
-    const { query_text, query_params }: RequestBody = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (error) {
+      console.error("Failed to parse request body:", error);
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const { query_text, query_params }: RequestBody = body;
     
     if (!query_text) {
       return new Response(
         JSON.stringify({ error: 'Missing query_text parameter' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log("Executing SQL query:", query_text);
+    console.log("With parameters:", query_params || {});
 
     // Execute the SQL query using Supabase's raw SQL execution
     const { data, error } = await supabaseClient.rpc('execute_sql_query', {
@@ -34,20 +59,24 @@ serve(async (req) => {
     });
 
     if (error) {
+      console.error("Error executing SQL:", error);
       throw error;
     }
 
     // Return the result data
     return new Response(
       JSON.stringify({ data }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Error executing SQL:', error);
     
     return new Response(
-      JSON.stringify({ error: error.message || 'Error executing SQL query' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        error: error.message || 'Error executing SQL query',
+        details: error.details || error.stack || 'No additional details'
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

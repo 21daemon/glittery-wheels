@@ -200,6 +200,9 @@ const ManageBookings: React.FC<BookingsProps> = ({ bookings, onRefresh }) => {
                     <TableCell>
                       {booking.profiles?.full_name || 'N/A'}
                       <div className="text-xs text-muted-foreground">{booking.car_make} {booking.car_model}</div>
+                      {!booking.profiles?.email && (
+                        <div className="text-xs text-amber-500">No email available</div>
+                      )}
                     </TableCell>
                     <TableCell>{booking.service_name}</TableCell>
                     <TableCell>

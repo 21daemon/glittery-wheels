@@ -28,7 +28,19 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { bucketName, isPublic = false, fileSizeLimit = 5242880 }: RequestBody = await req.json();
+    // Parse the request body
+    let body;
+    try {
+      body = await req.json();
+    } catch (error) {
+      console.error("Failed to parse request body:", error);
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { bucketName, isPublic = true, fileSizeLimit = 5242880 }: RequestBody = body;
     
     if (!bucketName) {
       return new Response(
@@ -101,7 +113,8 @@ serve(async (req) => {
         status: 500, 
         headers: { 
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
         } 
       }
     );
