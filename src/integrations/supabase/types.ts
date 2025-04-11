@@ -189,6 +189,16 @@ export type Database = {
         Args: { query_text: string; query_params?: Json }
         Returns: Json
       }
+      insert_progress_update: {
+        Args: {
+          p_booking_id: string
+          p_image_url: string
+          p_message: string
+          p_customer_email: string
+          p_car_details: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

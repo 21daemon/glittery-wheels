@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -61,6 +60,30 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
     setImagePreview(null);
   };
 
+  const createOrEnsureBucket = async () => {
+    try {
+      console.log("Ensuring storage bucket exists...");
+      const { error } = await supabase.functions.invoke('ensure-storage-bucket', {
+        body: {
+          bucketName: 'progress_photos',
+          isPublic: true,
+          fileSizeLimit: 5242880 // 5MB size limit
+        }
+      });
+      
+      if (error) {
+        console.error("Error ensuring bucket exists:", error);
+        throw new Error("Storage setup failed: " + error.message);
+      }
+      
+      console.log("Storage bucket setup successful");
+      return true;
+    } catch (error) {
+      console.error("Storage setup error:", error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -76,30 +99,32 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
     try {
       setIsUploading(true);
       
-      const { error: bucketError } = await supabase.functions.invoke('ensure-storage-bucket', {
-        body: {
-          bucketName: 'progress_photos',
-          isPublic: true,
-          fileSizeLimit: 5242880 // 5MB size limit
-        }
-      });
+      // Ensure bucket exists
+      await createOrEnsureBucket();
       
-      if (bucketError) {
-        console.error("Error ensuring bucket exists:", bucketError);
-        throw new Error("Storage setup failed: " + bucketError.message);
-      }
-      
+      // Upload file
       const fileName = `progress_${bookingId}_${Date.now()}.${selectedImage.name.split('.').pop()}`;
+      console.log("Uploading file:", fileName);
+      
       const { data: fileData, error: uploadError } = await supabase.storage
         .from('progress_photos')
         .upload(fileName, selectedImage);
       
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("File upload error:", uploadError);
+        throw uploadError;
+      }
       
+      console.log("File uploaded successfully:", fileData);
+      
+      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('progress_photos')
         .getPublicUrl(fileName);
-
+      
+      console.log("Public URL generated:", publicUrl);
+      
+      // Store progress update in database
       const { error: dbError } = await supabase.functions.invoke('execute-sql', {
         body: {
           query_text: `
@@ -116,21 +141,32 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
         }
       });
       
-      if (dbError) throw dbError;
-
-      const { error: notificationError } = await supabase.functions.invoke('notify-customer', {
-        body: {
-          customerEmail,
-          bookingId,
-          message: message || 'Your vehicle service is in progress. Here\'s an update!',
-          imageUrl: publicUrl,
-          carDetails
-        }
-      });
+      if (dbError) {
+        console.error("Database error:", dbError);
+        throw dbError;
+      }
       
-      if (notificationError) {
-        console.error("Error sending notification:", notificationError);
-        // Continue anyway since the upload was successful
+      console.log("Progress update stored in database");
+
+      // Notify customer
+      try {
+        const { error: notificationError } = await supabase.functions.invoke('notify-customer', {
+          body: {
+            customerEmail,
+            bookingId,
+            message: message || 'Your vehicle service is in progress. Here\'s an update!',
+            imageUrl: publicUrl,
+            carDetails
+          }
+        });
+        
+        if (notificationError) {
+          console.error("Error sending notification:", notificationError);
+          // Continue anyway since the upload was successful
+        }
+      } catch (notifyError) {
+        console.error("Notification service error:", notifyError);
+        // Don't throw this error since upload was successful
       }
       
       toast({
