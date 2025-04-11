@@ -36,7 +36,7 @@ const MyBookings: React.FC = () => {
         if (error) throw error;
 
         console.log('Fetched bookings:', data);
-        // Ensure data is always an array even if empty
+        // Ensure data is always an array even if empty or null
         const bookingsArray = Array.isArray(data) ? data : [];
         setBookings(bookingsArray);
         
@@ -102,6 +102,9 @@ const MyBookings: React.FC = () => {
     }
   };
 
+  // Check if bookings is undefined or not an array, and default to empty array
+  const safeBookings = Array.isArray(bookings) ? bookings : [];
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -113,7 +116,7 @@ const MyBookings: React.FC = () => {
             <div className="w-full flex justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             </div>
-          ) : bookings.length === 0 ? (
+          ) : safeBookings.length === 0 ? (
             <Alert className="bg-amber-500/10 border-amber-500/30">
               <AlertCircle className="h-4 w-4 text-amber-500" />
               <AlertTitle>No bookings found</AlertTitle>
@@ -133,8 +136,8 @@ const MyBookings: React.FC = () => {
                 onValueChange={(value) => {
                   if (value === "bookings") {
                     setActiveBooking(null);
-                  } else if (value === "progress" && !activeBooking && bookings.length > 0) {
-                    setActiveBooking(bookings[0].id);
+                  } else if (value === "progress" && !activeBooking && safeBookings.length > 0) {
+                    setActiveBooking(safeBookings[0].id);
                   }
                 }}
               >
@@ -148,7 +151,7 @@ const MyBookings: React.FC = () => {
                 
                 <TabsContent value="bookings">
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {bookings.map((booking) => (
+                    {safeBookings.map((booking) => (
                       <Card key={booking.id} className="bg-luxury-800/50 backdrop-blur-sm border border-white/10 overflow-hidden">
                         <CardHeader className="pb-2">
                           <div className="flex justify-between items-start">
@@ -201,7 +204,7 @@ const MyBookings: React.FC = () => {
                     <div className="space-y-6">
                       <div className="mb-4">
                         <div className="flex flex-wrap gap-2">
-                          {bookings.map((booking) => (
+                          {safeBookings.map((booking) => (
                             <Badge
                               key={booking.id}
                               variant={activeBooking === booking.id ? "default" : "outline"}
