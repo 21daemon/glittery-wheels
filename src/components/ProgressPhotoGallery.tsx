@@ -59,12 +59,18 @@ const ProgressPhotoGallery: React.FC<{ bookingId?: string }> = ({ bookingId }) =
         
         if (error) throw error;
         
-        // Handle the case where data might be null
-        const updates = data?.data || [];
-        setProgressUpdates(updates as ProgressUpdate[]);
+        console.log("Progress updates response:", data);
+        
+        // Handle the case where data might be null or not contain data property
+        let updates: ProgressUpdate[] = [];
+        if (data && Array.isArray(data.data)) {
+          updates = data.data as ProgressUpdate[];
+        }
+        
+        setProgressUpdates(updates);
         
         if (updates.length > 0) {
-          setActivePhoto(updates[0] as ProgressUpdate);
+          setActivePhoto(updates[0]);
         }
         
       } catch (error: any) {
@@ -82,6 +88,9 @@ const ProgressPhotoGallery: React.FC<{ bookingId?: string }> = ({ bookingId }) =
     fetchProgressUpdates();
   }, [user, bookingId, toast]);
 
+  // Ensure progressUpdates is always an array
+  const safeProgressUpdates = Array.isArray(progressUpdates) ? progressUpdates : [];
+
   if (isLoading) {
     return (
       <div className="py-12 flex justify-center">
@@ -90,7 +99,7 @@ const ProgressPhotoGallery: React.FC<{ bookingId?: string }> = ({ bookingId }) =
     );
   }
 
-  if (progressUpdates.length === 0) {
+  if (safeProgressUpdates.length === 0) {
     return (
       <Card className="bg-luxury-800/50 backdrop-blur-sm border border-white/10">
         <CardContent className="flex flex-col items-center justify-center py-12">
@@ -152,7 +161,7 @@ const ProgressPhotoGallery: React.FC<{ bookingId?: string }> = ({ bookingId }) =
         <div className="space-y-4">
           <h3 className="font-medium text-white">All Progress Photos</h3>
           <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-            {progressUpdates.map((update) => (
+            {safeProgressUpdates.map((update) => (
               <div 
                 key={update.id}
                 className={`flex gap-3 p-3 rounded-md cursor-pointer transition-colors ${

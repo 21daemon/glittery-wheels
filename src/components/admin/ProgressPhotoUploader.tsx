@@ -135,23 +135,62 @@ const ProgressPhotoUploader: React.FC<ProgressPhotoUploaderProps> = ({
       
       console.log("Public URL generated:", publicUrl);
       
-      // Store progress update in database using direct insert instead of function
-      const { error: dbError } = await supabase
-        .from('progress_updates')
-        .insert({
-          booking_id: bookingId,
-          image_url: publicUrl,
-          message: message,
-          customer_email: customerEmail,
-          car_details: carDetails
+      // Store progress update in database
+      console.log("Storing progress update with data:", {
+        booking_id: bookingId,
+        image_url: publicUrl,
+        message: message,
+        customer_email: customerEmail,
+        car_details: carDetails
+      });
+      
+      // Try using the "insert_progress_update" function first (safer approach)
+      try {
+        // Use execute-sql edge function to insert the data directly
+        const { error: sqlError } = await supabase.functions.invoke('execute-sql', {
+          body: {
+            query_text: `
+              INSERT INTO progress_updates (booking_id, image_url, message, customer_email, car_details)
+              VALUES (:booking_id, :image_url, :message, :customer_email, :car_details)
+              RETURNING id
+            `,
+            query_params: {
+              booking_id: bookingId,
+              image_url: publicUrl,
+              message: message,
+              customer_email: customerEmail,
+              car_details: carDetails
+            }
+          }
         });
         
-      if (dbError) {
-        console.error("Database error:", dbError);
-        throw dbError;
+        if (sqlError) {
+          console.error("Error with SQL insert:", sqlError);
+          throw sqlError;
+        }
+        
+        console.log("Progress update stored using execute-sql function");
+      } catch (functionError) {
+        console.error("Error using execute-sql function, falling back to direct insert:", functionError);
+        
+        // Fallback to direct insert if the function fails
+        const { error: dbError } = await supabase
+          .from('progress_updates')
+          .insert({
+            booking_id: bookingId,
+            image_url: publicUrl,
+            message: message,
+            customer_email: customerEmail,
+            car_details: carDetails
+          });
+          
+        if (dbError) {
+          console.error("Database error:", dbError);
+          throw dbError;
+        }
+        
+        console.log("Progress update stored in database using direct insert");
       }
-      
-      console.log("Progress update stored in database");
 
       // Notify customer
       try {
